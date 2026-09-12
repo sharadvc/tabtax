@@ -55,17 +55,16 @@ function normalizeState(state: AuctionState): AuctionState {
 }
 
 export async function getState(): Promise<AuctionState> {
-  if (isPersistenceEnabled()) {
-    const persisted = await loadPersistedState();
-    if (persisted) {
-      return normalizeState(persisted);
-    }
+  const persisted = await loadPersistedState();
+  if (persisted) {
+    return normalizeState(persisted);
   }
   return normalizeState(memoryState);
 }
 
 function minBidFrom(state: AuctionState): number {
-  const next = state.currentBid + 1;
+  const high = Math.max(state.currentBid, state.winner?.amount ?? 0);
+  const next = high + 1;
   return Math.max(FLOOR, next);
 }
 
@@ -92,7 +91,12 @@ export async function placeBid(input: {
       sha = loaded.sha;
     }
   } else {
-    working = memoryState;
+    const persisted = await loadPersistedState();
+    if (persisted) {
+      working = { ...persisted, history: [...persisted.history] };
+    } else {
+      working = memoryState;
+    }
   }
 
   const min = minBidFrom(working);

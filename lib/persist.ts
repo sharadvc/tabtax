@@ -61,9 +61,26 @@ async function fetchAuctionFile(): Promise<{
   return { state, sha: data.sha };
 }
 
+async function loadFromRawGithub(): Promise<AuctionState | null> {
+  const [owner, repo] = getRepo().split("/");
+  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${BRANCH}/${AUCTION_PATH}`;
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as AuctionState;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadPersistedState(): Promise<AuctionState | null> {
-  const result = await fetchAuctionFile();
-  return result.state;
+  if (getGithubToken()) {
+    const result = await fetchAuctionFile();
+    return result.state;
+  }
+  return loadFromRawGithub();
 }
 
 export async function savePersistedState(
