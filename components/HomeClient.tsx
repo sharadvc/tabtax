@@ -7,9 +7,11 @@ import { BidForm } from "./BidForm";
 import { ChromeTabMock } from "./ChromeTabMock";
 import { DemoBanner } from "./DemoBanner";
 import { LiveTicker } from "./LiveTicker";
+import { PersistenceBanner } from "./PersistenceBanner";
 
 type State = {
   demoMode: boolean;
+  persistence?: boolean;
   minBid: number;
   currentBid: number;
   winner: {
@@ -49,6 +51,7 @@ export function HomeClient() {
   return (
     <>
       {state.demoMode ? <DemoBanner /> : null}
+      {state.persistence === false ? <PersistenceBanner /> : null}
       <main className="mx-auto max-w-3xl px-4 py-10">
         <header className="mb-12 border-b-2 border-[var(--line)] pb-6">
           <p className="text-xs uppercase tracking-[0.3em]">TabTax</p>

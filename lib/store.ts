@@ -1,7 +1,14 @@
 /**
- * Module-level in-memory auction state.
- * Resets on serverless cold starts / new instances — acceptable for MVP demo.
+ * Auction state — durable via GitHub Contents API when a token is set;
+ * otherwise module-level memory (not shared across serverless instances).
  */
+
+import {
+  isPersistenceEnabled,
+  loadPersistedState,
+  readForUpdate,
+  savePersistedState,
+} from "./persist";
 
 export type BidEntry = {
   id: string;
@@ -25,7 +32,7 @@ export type AuctionState = {
 
 const FLOOR = 5;
 
-let state: AuctionState = {
+let memoryState: AuctionState = {
   currentBid: 0,
   winner: null,
   history: [],
@@ -35,12 +42,11 @@ export function getDemoMode(): boolean {
   return !process.env.STRIPE_SECRET_KEY;
 }
 
-export function getMinBid(): number {
-  const next = state.currentBid + 1;
-  return Math.max(FLOOR, next);
+export function persistenceActive(): boolean {
+  return isPersistenceEnabled();
 }
 
-export function getState(): AuctionState {
+function normalizeState(state: AuctionState): AuctionState {
   return {
     currentBid: Math.max(state.currentBid, state.winner?.amount ?? 0),
     winner: state.winner,
@@ -48,13 +54,48 @@ export function getState(): AuctionState {
   };
 }
 
-export function placeBid(input: {
+export async function getState(): Promise<AuctionState> {
+  if (isPersistenceEnabled()) {
+    const persisted = await loadPersistedState();
+    if (persisted) {
+      return normalizeState(persisted);
+    }
+  }
+  return normalizeState(memoryState);
+}
+
+function minBidFrom(state: AuctionState): number {
+  const next = state.currentBid + 1;
+  return Math.max(FLOOR, next);
+}
+
+export async function getMinBid(): Promise<number> {
+  const state = await getState();
+  return minBidFrom(state);
+}
+
+export async function placeBid(input: {
   brand: string;
   url: string;
   logoUrl?: string;
   amount: number;
-}): { ok: true; state: AuctionState } | { ok: false; error: string } {
-  const min = getMinBid();
+}): Promise<{ ok: true; state: AuctionState } | { ok: false; error: string }> {
+  let working: AuctionState;
+  let sha: string | null = null;
+
+  if (isPersistenceEnabled()) {
+    const loaded = await readForUpdate();
+    if (!loaded) {
+      working = { ...memoryState, history: [...memoryState.history] };
+    } else {
+      working = loaded.state;
+      sha = loaded.sha;
+    }
+  } else {
+    working = memoryState;
+  }
+
+  const min = minBidFrom(working);
   if (input.amount < min) {
     return { ok: false, error: `Minimum bid is $${min}` };
   }
@@ -69,8 +110,8 @@ export function placeBid(input: {
     url = `https://${url}`;
   }
 
-  state.currentBid = input.amount;
-  state.winner = {
+  working.currentBid = input.amount;
+  working.winner = {
     brand: input.brand.trim(),
     url,
     logoUrl: input.logoUrl?.trim() || undefined,
@@ -78,15 +119,44 @@ export function placeBid(input: {
   };
   const entry: BidEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    brand: state.winner.brand,
-    url: state.winner.url,
-    logoUrl: state.winner.logoUrl,
+    brand: working.winner.brand,
+    url: working.winner.url,
+    logoUrl: working.winner.logoUrl,
     amount: input.amount,
     at: new Date().toISOString(),
   };
-  state.history.push(entry);
+  working.history = [...working.history, entry];
 
-  return { ok: true, state: getState() };
+  if (isPersistenceEnabled()) {
+    let saved = await savePersistedState(working, sha);
+    if (!saved) {
+      const retry = await readForUpdate();
+      if (!retry) {
+        return { ok: false, error: "Could not save bid — try again" };
+      }
+      const minRetry = minBidFrom(retry.state);
+      if (input.amount < minRetry) {
+        return { ok: false, error: `Minimum bid is $${minRetry}` };
+      }
+      working = retry.state;
+      working.currentBid = input.amount;
+      working.winner = {
+        brand: input.brand.trim(),
+        url,
+        logoUrl: input.logoUrl?.trim() || undefined,
+        amount: input.amount,
+      };
+      working.history = [...working.history, entry];
+      saved = await savePersistedState(working, retry.sha);
+      if (!saved) {
+        return { ok: false, error: "Could not save bid — try again" };
+      }
+    }
+  } else {
+    memoryState = working;
+  }
+
+  return { ok: true, state: normalizeState(working) };
 }
 
 export { FLOOR };

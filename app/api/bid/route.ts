@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
 
-  const result = placeBid({
+  const result = await placeBid({
     brand: String(brand ?? ""),
     url: String(url ?? ""),
     logoUrl: logoUrl != null ? String(logoUrl) : undefined,
