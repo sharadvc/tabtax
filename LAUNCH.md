@@ -7,8 +7,8 @@
 
 ## Live URL
 
-- Production alias: https://tabtax-live-spoofsvs-projects.vercel.app
-- Set Chrome homepage to: `https://tabtax-live-spoofsvs-projects.vercel.app/tab`
+- Production: https://tabtax-live.vercel.app
+- Set Chrome homepage to: `https://tabtax-live.vercel.app/tab`
 
 > **Note:** Vercel git link (`tabtax-live` → `sharadvc/tabtax`) needs the [GitHub integration](https://github.com/apps/vercel) on the team. `create_git_project` failed with that requirement; code is on `main` for a one-click import.
 
@@ -18,4 +18,4 @@ No `STRIPE_SECRET_KEY` → red banner, simulated bids, min bid current + $1 (flo
 
 ## Tweet draft
 
-TabTax is live: a public auction for the indie new tab. Highest bid owns `/tab` — set it as your homepage. Demo bids, no card. https://tabtax-live-spoofsvs-projects.vercel.app
+TabTax is live: a public auction for the indie new tab. Highest bid owns `/tab` — set it as your homepage. Demo bids, no card. https://tabtax-live.vercel.app
