@@ -1,10 +1,10 @@
 {
-  "version": 2,
-  "currentBid": 7,
+  "version": 3,
+  "currentBid": 8,
   "winner": {
-    "brand": "StealCo",
-    "url": "https://steal.co/",
-    "amount": 7
+    "brand": "V2Test",
+    "url": "https://sharad.me/",
+    "amount": 8
   },
   "lock": null,
   "founders": [
@@ -21,6 +21,13 @@
       "url": "https://steal.co/",
       "amount": 7,
       "at": "2026-09-13T05:21:43.637Z"
+    },
+    {
+      "rank": 3,
+      "brand": "V2Test",
+      "url": "https://sharad.me/",
+      "amount": 8,
+      "at": "2026-09-13T08:11:31.748Z"
     }
   ],
   "history": [
@@ -39,6 +46,15 @@
       "amount": 7,
       "at": "2026-09-13T05:21:43.637Z",
       "stoleFrom": "EggCo",
+      "kind": "steal"
+    },
+    {
+      "id": "1789287091748-e7hsxv",
+      "brand": "V2Test",
+      "url": "https://sharad.me/",
+      "amount": 8,
+      "at": "2026-09-13T08:11:31.748Z",
+      "stoleFrom": "StealCo",
       "kind": "steal"
     }
   ]
