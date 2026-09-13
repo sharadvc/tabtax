@@ -1,21 +1,49 @@
-# TabTax launch
+# TabTax v2 — launch flex
 
-## Repo
-
-- GitHub: https://github.com/sharadvc/tabtax
-- Branch: `main` (full Next.js app, `npm run build` green)
-
-## Live URL
+## Live
 
 - Production: https://tabtax-live.vercel.app
-- Set Chrome homepage to: `https://tabtax-live.vercel.app/tab`
+- Chrome homepage: `https://tabtax-live.vercel.app/tab`
+- Repo: https://github.com/sharadvc/tabtax (`main`)
 
-> **Note:** Vercel git link (`tabtax-live` → `sharadvc/tabtax`) needs the [GitHub integration](https://github.com/apps/vercel) on the team. `create_git_project` failed with that requirement; code is on `main` for a one-click import.
+## v2 tweet (copy flex)
 
-## Demo mode
+```
+TabTax v2: steal the indie new tab in public.
 
-No `STRIPE_SECRET_KEY` → red banner, simulated bids, min bid current + $1 (floor $5).
+→ Outbid = instant eviction (kill feed on homepage)
+→ Whale SKU: 24h lock — nobody steals you until timer ends
+→ First 10 winners → permanent /founders badge
 
-## Tweet draft
+I'm flexing: https://tabtax-live.vercel.app
+```
 
-TabTax is live: a public auction for the indie new tab. Highest bid owns `/tab` — set it as your homepage. Demo bids, no card. https://tabtax-live.vercel.app
+With a winner, hit **Copy flex** on the homepage for tweet text + OG link.
+
+## Demo vs live $
+
+| Env | Effect |
+|-----|--------|
+| No `STRIPE_SECRET_KEY` | Red DEMO banner; `/api/bid` simulates steals + locks (same state machine) |
+| `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` | `/api/checkout` → Stripe; webhook confirms → winner written |
+| `TABTAX_GITHUB_TOKEN` or `GITHUB_TOKEN` | Auction state persists to `data/auction.json` on `main` (optimistic `version`) |
+| `NEXT_PUBLIC_SITE_URL` | Canonical URLs for OG + checkout redirects (optional; defaults to Vercel prod URL) |
+
+## Stripe webhook
+
+Point Stripe to: `https://tabtax-live.vercel.app/api/webhooks/stripe`  
+Events: `checkout.session.completed`
+
+## Verify after deploy
+
+1. `GET /api/state` — `version`, `founders`, `lockPrice`
+2. Demo steal — kill feed shows “X stole from Y for $Z”
+3. Demo lock — countdown on `/` and `/tab`
+4. `GET /api/og?brand=You&amount=99` — brutalist image
+5. `/founders` — EggCo seed founder #1
+
+## Build
+
+```bash
+npm run build
+```

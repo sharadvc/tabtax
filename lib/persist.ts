@@ -17,7 +17,14 @@ function getRepo(): string {
 }
 
 function emptyState(): AuctionState {
-  return { currentBid: 0, winner: null, history: [] };
+  return {
+    version: 0,
+    currentBid: 0,
+    winner: null,
+    lock: null,
+    founders: [],
+    history: [],
+  };
 }
 
 type GithubContent = {

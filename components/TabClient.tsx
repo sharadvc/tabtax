@@ -2,24 +2,33 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { LockCountdown } from "./LockCountdown";
 
-type Winner = {
-  brand: string;
-  url: string;
-  logoUrl?: string;
-  amount: number;
+type TabState = {
+  winner: {
+    brand: string;
+    url: string;
+    logoUrl?: string;
+    amount: number;
+  } | null;
+  locked: boolean;
+  unlockAt: string | null;
 };
 
 export function TabClient() {
-  const [winner, setWinner] = useState<Winner | null | undefined>(undefined);
+  const [state, setState] = useState<TabState | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/state", { cache: "no-store" });
       const data = await res.json();
-      setWinner(data.winner ?? null);
+      setState({
+        winner: data.winner ?? null,
+        locked: Boolean(data.locked),
+        unlockAt: data.unlockAt ?? null,
+      });
     } catch {
-      setWinner(null);
+      setState({ winner: null, locked: false, unlockAt: null });
     }
   }, []);
 
@@ -29,7 +38,7 @@ export function TabClient() {
     return () => clearInterval(t);
   }, [refresh]);
 
-  if (winner === undefined) {
+  if (!state) {
     return (
       <div className="flex min-h-screen items-center justify-center font-mono text-sm text-[var(--muted)]">
         Loading…
@@ -37,19 +46,15 @@ export function TabClient() {
     );
   }
 
+  const winner = state.winner;
+
   if (!winner) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center font-mono">
         <p className="text-4xl font-bold">TabTax</p>
         <p className="max-w-sm text-sm text-[var(--muted)]">
-          No winner yet. Be the first bid at{" "}
-          <Link href="/" className="underline">
-            tabtax.live
-          </Link>
-          .
-        </p>
-        <p className="text-xs text-[var(--muted)]">
-          Tip: set this page as your Chrome homepage for a cold-start new tab.
+          No winner yet. Steal the tab at{" "}
+          <Link href="/" className="underline">tabtax.live</Link>.
         </p>
       </div>
     );
@@ -64,6 +69,15 @@ export function TabClient() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[var(--bg)] p-8 text-center font-mono">
+      {state.locked ? (
+        <div className="w-full max-w-md">
+          <LockCountdown
+            unlockAt={state.unlockAt}
+            locked={state.locked}
+            variant="hero"
+          />
+        </div>
+      ) : null}
       {winner.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -82,7 +96,8 @@ export function TabClient() {
         {host}
       </a>
       <p className="text-xs text-[var(--muted)]">
-        <Link href="/" className="underline">TabTax</Link> · ${winner.amount} winning bid
+        <Link href="/" className="underline">TabTax</Link> · ${winner.amount} ·{" "}
+        {state.locked ? "locked" : "stealable"}
       </p>
     </div>
   );

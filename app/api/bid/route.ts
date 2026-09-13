@@ -1,4 +1,6 @@
+import { rateLimitBid } from "@/lib/ratelimit";
 import { getDemoMode, placeBid } from "@/lib/store";
+import { parseBidBody } from "@/lib/validate";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -6,8 +8,16 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   if (!getDemoMode()) {
     return NextResponse.json(
-      { error: "Live payments not configured on this deployment." },
-      { status: 501 }
+      { error: "Use Stripe checkout for live bids." },
+      { status: 400 }
+    );
+  }
+
+  const limited = rateLimitBid(req);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: "Too many bids — slow down" },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } }
     );
   }
 
@@ -18,27 +28,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { brand, url, logoUrl, amount } = body as Record<string, unknown>;
-  const num =
-    typeof amount === "number"
-      ? amount
-      : typeof amount === "string"
-        ? parseFloat(amount)
-        : NaN;
-
-  if (Number.isNaN(num)) {
-    return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+  const parsed = parseBidBody(body);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const result = await placeBid({
-    brand: String(brand ?? ""),
-    url: String(url ?? ""),
-    logoUrl: logoUrl != null ? String(logoUrl) : undefined,
-    amount: Math.round(num),
+    brand: parsed.brand,
+    url: parsed.url,
+    logoUrl: parsed.logoUrl,
+    amount: Math.round(parsed.amount),
+    expectedVersion: parsed.version,
+    withLock: parsed.lock === true,
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 400 });
+    const status = result.code === "stale" ? 409 : 400;
+    return NextResponse.json({ error: result.error, code: result.code }, { status });
   }
 
   return NextResponse.json({ demoMode: true, ...result.state });
